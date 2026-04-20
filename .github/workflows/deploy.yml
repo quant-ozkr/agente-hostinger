@@ -18,6 +18,9 @@ jobs:
           username: ${{ secrets.HOSTINGER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
+          timeout: 60s
+          command_timeout: 10m
+          script_stop: true
           script: |
             echo "Conectado al VPS. Iniciando deploy..."
             /var/www/tesis-app/deploy.sh

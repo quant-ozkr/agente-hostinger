@@ -23,4 +23,4 @@ jobs:
           script_stop: true
           script: |
             echo "Conectado al VPS. Iniciando deploy..."
-            /var/www/tesis-app/deploy.sh
+            bash /var/www/tesis-app/deploy.sh

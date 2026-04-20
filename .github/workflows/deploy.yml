@@ -20,4 +20,4 @@ jobs:
           port: 22
           script: |
             echo "Conectado al VPS. Iniciando deploy..."
-            sudo /var/www/tesis-app/deploy.sh
+            /var/www/tesis-app/deploy.sh

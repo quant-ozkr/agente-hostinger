@@ -1,0 +1,34 @@
+import sys
+import os
+sys.path.append(os.path.join(os.getcwd(), '.agents', 'skills', 'hostinger-tesis-manager', 'scripts'))
+import hostinger_mcp
+
+cmd = """
+sudo tee /etc/nginx/sites-available/tesis-api << 'NGINX'
+server {
+    listen 80;
+    server_name api.liqexpert.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # WebSockets support
+    location /api/v1/ws/ {
+        proxy_pass http://127.0.0.1:8001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+    }
+}
+NGINX
+
+sudo ln -sf /etc/nginx/sites-available/tesis-api /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+"""
+print(hostinger_mcp.ejecutar_comando_ssh(cmd))

@@ -1,0 +1,20 @@
+[Unit]
+Description=LiqExpert Webhook Receiver (Autocuración)
+After=network.target
+
+[Service]
+Type=exec
+User=tesis
+Group=tesis
+WorkingDirectory=/var/www/tesis-app/backend
+EnvironmentFile=/var/www/tesis-app/backend/.env
+ExecStart=/var/www/tesis-app/backend/venv/bin/python /var/www/tesis-app/backend/webhook_receiver.py
+Restart=always
+RestartSec=10
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tesis-webhook
+
+[Install]
+WantedBy=multi-user.target

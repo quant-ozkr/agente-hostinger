@@ -1,0 +1,24 @@
+[Unit]
+Description=LiqExpert Brainstem (Autonomous DevOps Agent)
+After=network.target tesis-backend.service
+
+[Service]
+Type=exec
+User=tesis
+Group=tesis
+WorkingDirectory=/var/www/tesis-app/backend
+# Usa el mismo entorno virtual que el backend para no duplicar espacio
+EnvironmentFile=/var/www/tesis-app/backend/.env
+ExecStart=/var/www/tesis-app/backend/venv/bin/python /var/www/tesis-app/backend/brainstem_mcp.py
+Restart=always
+RestartSec=30
+
+# El agente autónomo necesita poder reiniciar otros servicios
+# (Asegúrate de que 'tesis' tenga NOPASSWD en sudoers para systemctl)
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tesis-brainstem
+
+[Install]
+WantedBy=multi-user.target

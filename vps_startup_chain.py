@@ -1,30 +1,9 @@
 import os
-import paramiko
-from dotenv import load_dotenv
+import sys
 
-env_path = os.path.join(".agents", "skills", "hostinger-tesis-manager", "scripts", ".env")
-load_dotenv(dotenv_path=env_path)
-
-def ejecutar_comando_ssh(comando):
-    ip = os.getenv("HOSTINGER_IP")
-    usuario = os.getenv("HOSTINGER_USER")
-    puerto = int(os.getenv("HOSTINGER_PORT", 22))
-    llave_ruta = os.getenv("SSH_KEY_PATH")
-    
-    cliente = paramiko.SSHClient()
-    cliente.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    
-    try:
-        cliente.connect(ip, port=puerto, username=usuario, key_filename=llave_ruta)
-        stdin, stdout, stderr = cliente.exec_command(comando)
-        exit_status = stdout.channel.recv_exit_status()
-        salida = stdout.read().decode('utf-8').strip()
-        error = stderr.read().decode('utf-8').strip()
-        return exit_status, salida, error
-    except Exception as e:
-        return -1, "", str(e)
-    finally:
-        cliente.close()
+# Agregar la ruta base al path para poder importar core.ssh_utils si se corre directamente
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from core.ssh_utils import run_remote_command as ejecutar_comando_ssh
 
 def update_startup_chain():
     print("--- FASE 2: ACTUALIZANDO STARTUP CHAIN ---")

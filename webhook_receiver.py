@@ -13,14 +13,28 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("webhook-receiver")
 
 app = FastAPI()
-
 # Direcciones de la Trinidad Agéntica en el VPS
 BRAINS = {
-    "logico": "http://127.0.0.1:8001/health",
-    "social_app": "http://127.0.0.1:8002/",
-    "social_mcp": "http://127.0.0.1:8005/health",
-    "tecnico": "http://127.0.0.1:8004/health"
+    "backend_asesor": "http://127.0.0.1:8001/health",
+    "mkt_agent": "http://127.0.0.1:8002/health",
+    "orchestrator": "http://127.0.0.1:8010/health"
 }
+
+ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL", "http://127.0.0.1:8010")
+A2A_SECRET = os.getenv("A2A_SHARED_SECRET", "liqexpert_a2a_secret_2026_!!!")
+
+async def send_orchestrator_notification(text: str, level: str = "INFO"):
+    """Envía una notificación al Orquestador para que llegue al móvil del humano."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.post(
+                f"{ORCHESTRATOR_URL}/v1/notify",
+                json={"text": text, "level": level},
+                headers={"X-A2A-Secret": A2A_SECRET}
+            )
+    except Exception as e:
+        logger.error(f"Error enviando notificación al orquestador: {e}")
+
 
 # Token de seguridad sencillo para evitar que extraños disparen reinicios/deploys
 # Se recomienda configurar esto en el .env del VPS
@@ -43,18 +57,29 @@ async def get_trinidad_status():
         "brains": results
     }
 
-def heal_protocol():
+async def heal_protocol():
     """Ejecuta la lógica de autocuración."""
     logger.info("[AUTOCURACIÓN] Iniciando protocolo...")
+    await send_orchestrator_notification("Sistema caído detectado. Iniciando protocolo de autocuración...", "WARNING")
+    
     # Intenta reiniciar el servicio del cerebro técnico que es el que corre el orquestador/mcp
     subprocess.run(["sudo", "systemctl", "restart", "cfo-brainstem"])
+    
     logger.info("[AUTOCURACIÓN] Protocolo finalizado.")
+    await send_orchestrator_notification("Protocolo de autocuración finalizado. Reinicio de servicios solicitado.", "SUCCESS")
 
-def deploy_protocol():
+async def deploy_protocol():
     """Ejecuta el despliegue optimizado."""
     logger.info("[DEPLOY] Iniciando despliegue desde webhook...")
+    await send_orchestrator_notification("Nueva versión detectada en GitHub. Iniciando despliegue automático en el VPS...", "INFO")
+    
     result = build_and_deploy()
+    
     logger.info(f"[DEPLOY] Resultado: {result}")
+    if "successful" in result.lower():
+        await send_orchestrator_notification(f"Despliegue finalizado con éxito en el VPS.\n\n{result}", "SUCCESS")
+    else:
+        await send_orchestrator_notification(f"ERROR en el despliegue del VPS:\n\n{result}", "ERROR")
 
 @app.post("/webhook/uptime")
 async def uptime_handler(request: Request, background_tasks: BackgroundTasks):

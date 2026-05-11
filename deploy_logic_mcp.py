@@ -1,20 +1,21 @@
 """
-deploy_logic_mcp.py — Despliega el Cerebro Lógico MCP en el VPS de producción.
+deploy_logic_mcp.py — Verifica la salud del Backend (Motor Fiscal + Asesor) en producción.
+
+NOTA: Tras la refactorización, el "Cerebro Lógico" (herramientas del Asesor)
+ya NO es un servicio separado en puerto 8007. Ahora está integrado en el
+Backend principal (puerto 8001).
 
 Pasos que ejecuta:
-  1. Sube el archivo del servicio systemd (tesis-logic-mcp.service) al VPS
-  2. Activa e inicia el servicio en systemd
-  3. Añade MCP_API_KEY al .env del backend si no está presente
-  4. Reinicia el backend para que tome la nueva variable
-  5. Valida el health check en el puerto 8007
+  1. Verifica que el backend responde en puerto 8001
+  2. Valida que las herramientas del Asesor están disponibles
+  3. Muestra el estado de todos los servicios relevantes
 
 Requisitos previos (.env en .agents/skills/hostinger-tesis-manager/scripts/.env):
-  HOSTINGER_IP, HOSTINGER_USER, HOSTINGER_PORT, SSH_KEY_PATH, MCP_API_KEY
+  HOSTINGER_IP, HOSTINGER_USER, HOSTINGER_PORT, SSH_KEY_PATH
 """
 
 import os
 import sys
-import time
 import paramiko
 from dotenv import load_dotenv
 
@@ -30,14 +31,8 @@ VPS_IP       = os.getenv("HOSTINGER_IP")
 VPS_USER     = os.getenv("HOSTINGER_USER")
 VPS_PORT     = int(os.getenv("HOSTINGER_PORT", "22"))
 SSH_KEY_PATH = os.getenv("SSH_KEY_PATH")
-MCP_API_KEY  = os.getenv("MCP_API_KEY", "")
 
 BACKEND_DIR  = "/var/www/tesis-app/backend"
-SERVICE_NAME = "tesis-logic-mcp"
-# Ruta al .service relativa a este script (inf-expert-agent/../liq-expert-agent/...)
-_HERE = os.path.dirname(os.path.abspath(__file__))
-SERVICE_FILE = os.path.join(_HERE, "..", "liq-expert-agent", "backend", "infra", "tesis-logic-mcp.service")
-SERVICE_FILE = os.path.normpath(SERVICE_FILE)
 
 
 def _exec(client: paramiko.SSHClient, cmd: str, check: bool = True) -> str:
@@ -58,11 +53,7 @@ def deploy():
         print(f"   Buscando en: {env_path}")
         sys.exit(1)
 
-    if not os.path.exists(SERVICE_FILE):
-        print(f"❌ Archivo de servicio no encontrado: {SERVICE_FILE}")
-        sys.exit(1)
-
-    print(f"🚀 Desplegando Cerebro Lógico MCP en {VPS_IP}:{VPS_PORT}...")
+    print(f"🚀 Verificando Backend (Motor Fiscal + Asesor) en {VPS_IP}:{VPS_PORT}...")
 
     client = paramiko.SSHClient()
     client.load_system_host_keys()
@@ -76,71 +67,46 @@ def deploy():
         )
         sftp = client.open_sftp()
 
-        # ── Paso 1: Subir el archivo del servicio ─────────────────────────
-        print("\n[1/5] Subiendo tesis-logic-mcp.service...")
-        sftp.put(SERVICE_FILE, "/tmp/tesis-logic-mcp.service")
-        print("   ✅ Archivo subido a /tmp/")
-
-        # ── Paso 2: Instalar y activar el servicio ────────────────────────
-        print("\n[2/5] Instalando y activando el servicio systemd...")
-        cmds_systemd = [
-            "sudo mv /tmp/tesis-logic-mcp.service /etc/systemd/system/tesis-logic-mcp.service",
-            "sudo systemctl daemon-reload",
-            "sudo systemctl enable tesis-logic-mcp",
-            "sudo systemctl restart tesis-logic-mcp",
-        ]
-        for cmd in cmds_systemd:
-            print(f"   $ {cmd}")
-            _exec(client, cmd)
-        print("   ✅ Servicio configurado e iniciado")
-
-        # ── Paso 3: Añadir MCP_API_KEY al .env del backend ───────────────
-        print("\n[3/5] Verificando MCP_API_KEY en el .env del backend...")
-        env_file = f"{BACKEND_DIR}/.env"
-        check_cmd = f"grep -c 'MCP_API_KEY' {env_file} 2>/dev/null || echo 0"
-        count = _exec(client, check_cmd).strip()
-
-        if count == "0":
-            if MCP_API_KEY:
-                add_cmd = f"echo 'MCP_API_KEY={MCP_API_KEY}' | sudo tee -a {env_file}"
-                _exec(client, add_cmd)
-                print("   ✅ MCP_API_KEY añadida al .env del backend")
-            else:
-                print("   ⚠  MCP_API_KEY no está en el .env local. Añádela manualmente al VPS.")
-        else:
-            print("   ✅ MCP_API_KEY ya existe en el .env del backend")
-
-        # ── Paso 4: Reiniciar el backend para tomar la nueva variable ─────
-        print("\n[4/5] Reiniciando tesis-backend para tomar nuevas variables...")
-        _exec(client, "sudo systemctl restart tesis-backend")
-        time.sleep(3)
-        status = _exec(client, "sudo systemctl is-active tesis-backend")
-        if "active" in status:
-            print("   ✅ Backend reiniciado correctamente")
-        else:
-            print(f"   ⚠  Estado del backend: {status}")
-
-        # ── Paso 5: Validar health check del MCP en puerto 8007 ──────────
-        print("\n[5/5] Validando health check en puerto 8007...")
-        time.sleep(5)  # Dar tiempo al servicio para arrancar
-        health = _exec(client, "curl -sf http://localhost:8007/health || echo 'FAIL'")
+        # ── Paso 1: Validar health check del Backend en puerto 8001 ───────
+        print("\n[1/3] Validando health check del Backend en puerto 8001...")
+        health = _exec(client, "curl -sf http://localhost:8001/health || echo 'FAIL'")
 
         if "FAIL" in health or not health:
-            print("   ❌ El MCP no responde en el puerto 8007. Verificando logs...")
-            _exec(client, f"sudo journalctl -u {SERVICE_NAME} -n 20 --no-pager")
+            print("   ❌ El Backend no responde en el puerto 8001. Verificando logs...")
+            _exec(client, "sudo journalctl -u tesis-backend -n 20 --no-pager")
         else:
-            print("   ✅ Cerebro Lógico MCP respondiendo correctamente en :8007")
+            print("   ✅ Backend respondiendo correctamente en :8001")
+            print(f"   ↳ {health[:200] if health else 'OK'}")
 
-        # ── Resumen del estado de todos los servicios ─────────────────────
-        print("\n📊 Estado de todos los servicios del ecosistema:")
-        services = ["tesis-backend", "tesis-brainstem", SERVICE_NAME, "nginx"]
-        for svc in services:
-            status = _exec(client, f"sudo systemctl is-active {svc} 2>/dev/null")
-            icon = "✅" if "active" in status else "❌"
-            print(f"   {icon} {svc}: {status}")
+        # ── Paso 2: Verificar que Orchestrator está disponible ────────────
+        print("\n[2/3] Verificando Orchestrator (HITL) en puerto 8010...")
+        orch_health = _exec(client, "curl -sf http://localhost:8010/health || echo 'FAIL'")
+
+        if "FAIL" in orch_health or not orch_health:
+            print("   ❌ Orchestrator no responde en el puerto 8010.")
+        else:
+            print("   ✅ Orchestrator respondiendo correctamente en :8010")
+
+        # ── Paso 3: Estado de todos los servicios ────────────────────────
+        print("\n[3/3] Estado de servicios del ecosistema:")
+        services = [
+            ("Backend (Motor + Asesor)", "tesis-backend"),
+            ("Orchestrator (HITL)", "tesis-orchestrator"),
+            ("MKT Agent (Captador)", "tesis-mkt"),
+            ("PostgreSQL", "postgresql"),
+            ("Nginx", "nginx"),
+        ]
+        for name, svc in services:
+            status = _exec(client, f"sudo systemctl is-active {svc} 2>/dev/null || echo 'unknown'")
+            icon = "✅" if "active" in status else "⚠️ "
+            print(f"   {icon} {name}: {status}")
+
+        # ── Servicios eliminados tras refactorización ──────────────────────
+        print("\n📝 Servicios eliminados tras refactorización MCP→Backend:")
+        print("   • tesis-logic-mcp (puerto 8007) - Ya no existe, integrado en Backend")
 
         sftp.close()
-        print("\n🎉 Despliegue del Cerebro Lógico MCP completado exitosamente.")
+        print("\n🎉 Verificación del Backend completada.")
 
     except paramiko.ssh_exception.NoValidConnectionsError:
         print(f"❌ No se puede conectar a {VPS_IP}:{VPS_PORT}. ¿El VPS está encendido?")
@@ -149,7 +115,7 @@ def deploy():
         print("❌ Falla de autenticación SSH. Verifica SSH_KEY_PATH y que la llave esté en el VPS.")
         sys.exit(1)
     except paramiko.ssh_exception.SSHException as e:
-        print(f"❌ Error SSH (posible host no reconocido - RejectPolicy activa): {e}")
+        print(f"❌ Error SSH: {e}")
         print("   Ejecuta: ssh-keyscan -H <IP_VPS> >> ~/.ssh/known_hosts")
         sys.exit(1)
     except Exception as e:

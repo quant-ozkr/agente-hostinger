@@ -1,6 +1,4 @@
-import pytest
 from graph.agent_graph import create_tech_agent_graph
-from unittest.mock import patch
 
 def test_graph_compilation():
     """Verifica que el grafo compile correctamente."""

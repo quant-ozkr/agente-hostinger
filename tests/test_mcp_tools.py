@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import patch
 from brainstem_mcp import restart_service, resolver_bloqueo_puerto
 

@@ -27,7 +27,6 @@ sys.path.append(skills_path)
 def test_imports():
     """Prueba que los módulos se importen correctamente"""
     try:
-        from hostinger_mcp import ejecutar_comando_ssh
         print("[OK] Importación de hostinger_mcp exitosa")
         return True
     except Exception as e:

@@ -139,7 +139,7 @@ def deploy():
             print(f"   {icon} {svc}: {status}")
 
         sftp.close()
-        print(f"\n🎉 Despliegue del Cerebro Lógico MCP completado exitosamente.")
+        print("\n🎉 Despliegue del Cerebro Lógico MCP completado exitosamente.")
 
     except paramiko.ssh_exception.NoValidConnectionsError:
         print(f"❌ No se puede conectar a {VPS_IP}:{VPS_PORT}. ¿El VPS está encendido?")

@@ -1,0 +1,20 @@
+[Unit]
+Description=CFO Webhook Receiver (Autocuración)
+After=network.target
+
+[Service]
+Type=exec
+User=tesis
+Group=tesis
+WorkingDirectory=/opt/cfo-expert-agent/inf-expert-agent
+EnvironmentFile=/opt/cfo-expert-agent/.env
+ExecStart=/opt/cfo-expert-agent/inf-expert-agent/.venv/bin/python /opt/cfo-expert-agent/inf-expert-agent/webhook_receiver.py
+Restart=always
+RestartSec=10
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cfo-webhook
+
+[Install]
+WantedBy=multi-user.target

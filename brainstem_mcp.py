@@ -1,7 +1,5 @@
 # brainstem_mcp.py - Servidor MCP Local del VPS (Cerebro Técnico)
-import os
 import subprocess
-import shlex
 from mcp.server.fastmcp import FastMCP
 
 # Inicializar servidor MCP Autónomo en puerto 8004

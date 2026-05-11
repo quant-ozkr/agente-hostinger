@@ -1,0 +1,72 @@
+{
+  "agent_name": "inf-expert-agent",
+  "description": "Agente Técnico - Gestión de infraestructura VPS, despliegues, monitoreo y operaciones SSH",
+  "version": "1.0.0",
+  "python_version": "3.11",
+  "dependencies": [
+    "requirements.txt"
+  ],
+  "model": {
+    "provider": "google",
+    "name": "gemini-2.5-flash-preview-04-17",
+    "temperature": 0.2,
+    "max_tokens": 8192
+  },
+  "graphs": {
+    "inf-expert-agent": {
+      "path": "graph/agent_graph.py",
+      "class": "build_infrastructure_graph",
+      "checkpointer": {
+        "type": "postgres",
+        "connection_string": "${DATABASE_URL}"
+      }
+    }
+  },
+  "tools": {
+    "path": "graph/subagents.py",
+    "mcp_servers": ["brainstem_mcp"]
+  },
+  "observability": {
+    "langfuse": {
+      "enabled": true,
+      "public_key": "${LANGFUSE_PUBLIC_KEY}",
+      "secret_key": "${LANGFUSE_SECRET_KEY}",
+      "host": "${LANGFUSE_HOST}"
+    }
+  },
+  "middleware": [
+    "PIIMiddleware",
+    "ModelCallLimitMiddleware",
+    "ToolCallLimitMiddleware"
+  ],
+  "api": {
+    "framework": "fastapi",
+    "port": "${PORT:-8003}",
+    "cors": {
+      "allow_origins": ["${ALLOWED_ORIGINS}"],
+      "allow_methods": ["*"],
+      "allow_headers": ["*"]
+    }
+  },
+  "deployment": {
+    "platform": "vps",
+    "healthcheck": "/health",
+    "env_vars": [
+      "DATABASE_URL",
+      "GEMINI_API_KEY",
+      "LANGFUSE_PUBLIC_KEY",
+      "LANGFUSE_SECRET_KEY",
+      "LANGFUSE_HOST",
+      "SSH_PRIVATE_KEY_PATH"
+    ]
+  },
+  "env": ".env",
+  "dockerfile_lines": [
+    "RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev && rm -rf /var/lib/apt/lists/*",
+    "RUN useradd --create-home appuser",
+    "ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1",
+    "EXPOSE 8003",
+    "HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \\\n    CMD curl -f http://localhost:8003/health || exit 1",
+    "USER appuser"
+  ]
+}

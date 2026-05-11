@@ -1,0 +1,20 @@
+[Unit]
+Description=CFO Brainstem (Autonomous DevOps Agent)
+After=network.target cfo-backend.service
+
+[Service]
+Type=exec
+User=tesis
+Group=tesis
+WorkingDirectory=/opt/cfo-expert-agent/inf-expert-agent
+EnvironmentFile=/opt/cfo-expert-agent/.env
+ExecStart=/opt/cfo-expert-agent/inf-expert-agent/.venv/bin/python /opt/cfo-expert-agent/inf-expert-agent/brainstem_mcp.py
+Restart=always
+RestartSec=30
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cfo-brainstem
+
+[Install]
+WantedBy=multi-user.target

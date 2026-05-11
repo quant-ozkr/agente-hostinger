@@ -1,5 +1,4 @@
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from core.ssh_utils import SSHConnection
 
 def test_ssh_connection_reject_policy():

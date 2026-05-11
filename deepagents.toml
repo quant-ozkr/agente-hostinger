@@ -1,0 +1,71 @@
+# DeepAgents Configuration - Infrastructure Expert Agent
+# Version: 1.0.0 | 2026-05-01
+
+[agent]
+name = "inf-expert-agent"
+display_name = "InfExpert - Infrastructure Management"
+description = "Agente Técnico para gestión de infraestructura, VPS, despliegues y monitoreo"
+version = "1.0.0"
+type = "infrastructure"
+
+[model]
+provider = "google"
+name = "gemini-2.5-flash-preview-04-17"
+temperature = 0.2
+max_tokens = 8192
+streaming = true
+
+[sandbox]
+enabled = true
+mode = "docker"
+network = "isolated"
+allowed_imports = ["fastapi", "sqlalchemy", "langchain", "langgraph", "paramiko", "subprocess"]
+read_only_paths = ["/etc", "/var", "/home"]
+write_paths = ["/tmp", "./logs"]
+
+[auth]
+type = "jwt"
+algorithm = "HS256"
+access_token_expire_minutes = 30
+refresh_token_expire_days = 7
+secret_key_env = "SECRET_KEY"
+
+[rbac]
+default_role = "operator"
+roles = ["operator", "admin", "auditor"]
+permissions = {
+  "operator" = ["vps:read", "deploy:execute", "monitor:read"],
+  "admin" = ["vps:full", "deploy:full", "config:write", "ssl:manage"],
+  "auditor" = ["logs:read", "audit:read", "metrics:read"]
+}
+
+[api]
+framework = "fastapi"
+port = "${PORT:-8003}"
+prefix = "/api/v1"
+rate_limit_per_minute = 120
+
+[database]
+type = "postgresql"
+url_env = "DATABASE_URL"
+pool_size = 10
+max_overflow = 20
+
+[observability]
+langfuse_enabled = true
+langfuse_host_env = "LANGFUSE_HOST"
+langfuse_public_key_env = "LANGFUSE_PUBLIC_KEY"
+langfuse_secret_key_env = "LANGFUSE_SECRET_KEY"
+log_level = "INFO"
+
+[security]
+pii_detection = true
+pii_mask_char = "■"
+max_model_calls_per_thread = 40
+max_tool_calls_per_thread = 50
+recursion_limit = 25
+
+[infrastructure]
+ssh_timeout = 30
+max_concurrent_deployments = 3
+allowed_ports = [22, 80, 443, 8000, 8001, 8002, 8003]

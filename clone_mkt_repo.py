@@ -6,7 +6,7 @@ import hostinger_mcp
 # Repo URL using SSH
 repo_ssh_url = "git@github.com:quant-ozkr/agencia-mkt-aut.git"
 
-cmd = f"""
+cmd = """
 # Configurar SSH para usar la deploy key específica para MKT
 cat <<EOF >> ~/.ssh/config
 

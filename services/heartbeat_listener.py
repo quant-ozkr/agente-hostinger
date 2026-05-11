@@ -1,4 +1,3 @@
-import os
 import uvicorn
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from pydantic import BaseModel

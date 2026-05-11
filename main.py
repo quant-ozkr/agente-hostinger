@@ -6,6 +6,11 @@ Implements A2A protocol endpoints for agent discovery and communication.
 import os
 import json
 import logging
+import uuid
+import sqlite3
+import threading
+import time
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Depends, Request, Security
 from fastapi.responses import JSONResponse
@@ -42,7 +47,6 @@ app = FastAPI(
 # =====================================================================
 # Request ID Middleware (ISO 27001 A.8.15 - Trazabilidad)
 # =====================================================================
-import uuid
 
 @app.middleware("http")
 async def add_request_id(request, call_next):
@@ -184,11 +188,6 @@ async def get_agent_card(assistant_id: str):
 # =====================================================================
 # A2A Task Persistence (per docs/A2A_PROTOCOL_SPEC.md v1.0)
 # =====================================================================
-
-import sqlite3
-import threading
-import time
-from pathlib import Path
 
 _TASK_DB_PATH = Path(os.getenv("A2A_TASK_DB", "data/a2a_tasks.db"))
 _TASK_DB_PATH.parent.mkdir(parents=True, exist_ok=True)

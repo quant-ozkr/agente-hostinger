@@ -42,7 +42,6 @@ def update_nginx_webhook():
 """
         # Usamos sed para insertar antes de la última llave de cierre del bloque server
         # Este comando es quirúrgico: busca la última '}' y pone el texto antes.
-        cmd_nginx = f"sudo sed -i '$i {location_webhook}' {conf_path}"
         
         # Nota: Sed con múltiples líneas es complejo, mejor usamos un script python temporal en el VPS
         py_script = f"""

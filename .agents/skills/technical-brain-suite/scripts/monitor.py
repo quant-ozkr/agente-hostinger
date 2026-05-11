@@ -24,7 +24,7 @@ def get_status(repo, branch='main'):
         if r.get("workflow_runs"):
             run = r["workflow_runs"][0]
             return run['status'], run['conclusion'], run['html_url']
-    except:
+    except Exception:
         pass
     return "unknown", "unknown", "N/A"
 

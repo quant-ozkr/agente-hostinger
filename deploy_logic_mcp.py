@@ -14,6 +14,7 @@ Requisitos previos (.env en .agents/skills/hostinger-tesis-manager/scripts/.env)
 
 import os
 import sys
+import time
 import paramiko
 from dotenv import load_dotenv
 
@@ -112,7 +113,7 @@ def deploy():
         # ── Paso 4: Reiniciar el backend para tomar la nueva variable ─────
         print("\n[4/5] Reiniciando tesis-backend para tomar nuevas variables...")
         _exec(client, "sudo systemctl restart tesis-backend")
-        import time; time.sleep(3)
+        time.sleep(3)
         status = _exec(client, "sudo systemctl is-active tesis-backend")
         if "active" in status:
             print("   ✅ Backend reiniciado correctamente")
@@ -121,12 +122,12 @@ def deploy():
 
         # ── Paso 5: Validar health check del MCP en puerto 8007 ──────────
         print("\n[5/5] Validando health check en puerto 8007...")
-        import time; time.sleep(5)  # Dar tiempo al servicio para arrancar
+        time.sleep(5)  # Dar tiempo al servicio para arrancar
         health = _exec(client, "curl -sf http://localhost:8007/health || echo 'FAIL'")
 
         if "FAIL" in health or not health:
             print("   ❌ El MCP no responde en el puerto 8007. Verificando logs...")
-            logs = _exec(client, f"sudo journalctl -u {SERVICE_NAME} -n 20 --no-pager")
+            _exec(client, f"sudo journalctl -u {SERVICE_NAME} -n 20 --no-pager")
         else:
             print("   ✅ Cerebro Lógico MCP respondiendo correctamente en :8007")
 

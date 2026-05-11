@@ -41,7 +41,8 @@ def deploy():
             stdin, stdout, stderr = cliente.exec_command(cmd)
             print(f"Exec: {cmd}\n{stdout.read().decode().strip()}")
             err = stderr.read().decode().strip()
-            if err: print(f"Nota/Error: {err}")
+            if err:
+                print(f"Nota/Error: {err}")
 
         print("\n✅ ¡Despliegue completado! El Cerebro Técnico ya está corriendo en el VPS.")
         sftp.close()

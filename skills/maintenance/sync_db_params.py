@@ -15,7 +15,6 @@ def sync_db_params(tables: list[str]) -> str:
     if not tables:
         return "Error: No tables specified for sync."
 
-    local_sql = "temp_params_export.sql"
     fixed_sql = "temp_params_fixed.sql"
     remote_path = "/tmp/sync_params.sql"
 

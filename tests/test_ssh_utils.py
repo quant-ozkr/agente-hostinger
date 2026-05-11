@@ -7,7 +7,7 @@ def test_ssh_connection_reject_policy():
         mock_client_instance = MockClient.return_value
         
         # Al inicializar no debería explotar si los args son validos
-        conn = SSHConnection(ip="127.0.0.1", username="test", key_path="/fake/path")
+        SSHConnection(ip="127.0.0.1", username="test", key_path="/fake/path")
         
         # Validar que set_missing_host_key_policy fue llamado con RejectPolicy
         from paramiko import RejectPolicy

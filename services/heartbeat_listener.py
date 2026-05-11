@@ -1,14 +1,12 @@
 import uvicorn
+import logging
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from pydantic import BaseModel
-import logging
+from graph.agent_graph import create_tech_agent_graph
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("heartbeat")
-
-# Importar el grafo
-from graph.agent_graph import create_tech_agent_graph
 
 app = FastAPI(title="Tech Agent Heartbeat Listener")
 graph = create_tech_agent_graph()

@@ -90,7 +90,7 @@ async def deploy_handler(request: Request, background_tasks: BackgroundTasks, x_
         logger.warning(f"[DEPLOY] Intento de acceso no autorizado desde {request.client.host}")
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    logger.info(f"[DEPLOY] Petición de despliegue recibida correctamente.")
+    logger.info("[DEPLOY] Petición de despliegue recibida correctamente.")
     background_tasks.add_task(deploy_protocol)
     
     return {"status": "deploy_initiated", "message": "Pulling latest images and updating containers..."}

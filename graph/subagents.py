@@ -7,7 +7,6 @@ from langchain_core.messages import BaseMessage, AIMessage
 from skills.cicd.health_check import health_check
 from skills.cicd.build_and_deploy import build_and_deploy
 from skills.monitoring.notify_orchestrator import notify_orchestrator
-from skills.maintenance.sync_db_params import sync_db_params
 
 logger = logging.getLogger("subagents")
 

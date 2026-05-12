@@ -29,7 +29,6 @@ def pull_db_params(tables: list[str] = None) -> str:
     if not tables:
         tables = ALL_PARAM_TABLES
 
-    remote_sql = "/tmp/param_export.sql"
     local_sql = "temp_params_from_vps.sql"
 
     try:

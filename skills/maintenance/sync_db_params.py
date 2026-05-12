@@ -1,15 +1,16 @@
 """
-Skill: Sync DB Params
+Skill: Sync DB Params v2.0
 Exports local parameter tables, sanitizes them, and imports them into the VPS.
-Handles common pitfalls like encoding, foreign keys, and truncating.
+Architecture v2.0: Targets cfo-expert-agent-postgres-1 and liqExpert database.
 """
 import os
 import subprocess
 from core.ssh_utils import get_ssh_connection_from_env, logger
 
-CFO_POSTGRES_CONTAINER = "cfo_postgres"
-VPS_POSTGRES_CONTAINER = "cfo_postgres"
-
+CFO_POSTGRES_CONTAINER = "cfo-expert-agent-postgres-1"
+VPS_POSTGRES_CONTAINER = "cfo-expert-agent-postgres-1"
+DB_NAME = "liqExpert"
+DB_USER = "rootAdminLiq"
 
 def sync_db_params(tables: list[str]) -> str:
     if not tables:
@@ -19,16 +20,18 @@ def sync_db_params(tables: list[str]) -> str:
     remote_path = "/tmp/sync_params.sql"
 
     try:
-        logger.info(f"Exporting local tables: {', '.join(tables)}")
+        logger.info(f"Exporting local tables from {CFO_POSTGRES_CONTAINER}...")
         table_args = " ".join([f"-t {t}" for t in tables])
-        cmd = f'docker exec -i {CFO_POSTGRES_CONTAINER} pg_dump -U agencia_user -d agencia_mkt_db --data-only --column-inserts {table_args}'
+        cmd = f'docker exec -i {CFO_POSTGRES_CONTAINER} pg_dump -U {DB_USER} -d {DB_NAME} --data-only --column-inserts {table_args}'
         result = subprocess.run(cmd, shell=True, capture_output=True, text=False)
 
         if result.returncode != 0:
             return f"Error exporting local data: {result.stderr.decode('utf-8')}"
 
         content = result.stdout.decode('utf-8', errors='ignore')
-        content = content.replace("'430c6573-4c0d-46dc-8ccb-6f1260ecfc6f'", "NULL")
+        
+        # Sanitización de IDs específicos si es necesario
+        # content = content.replace("'some-old-id'", "NULL")
 
         truncate_cmd = f"TRUNCATE TABLE {', '.join(tables)} CASCADE;\n"
 
@@ -44,8 +47,8 @@ def sync_db_params(tables: list[str]) -> str:
         sftp.put(fixed_sql, remote_path)
         sftp.close()
 
-        logger.info("Importing data into VPS database...")
-        import_cmd = f"docker exec -i {VPS_POSTGRES_CONTAINER} psql -U agencia_user -d agencia_mkt_db < {remote_path}"
+        logger.info(f"Importing data into VPS database {DB_NAME}...")
+        import_cmd = f"docker exec -i {VPS_POSTGRES_CONTAINER} psql -U {DB_USER} -d {DB_NAME} < {remote_path}"
         status, out, err = conn.execute_command(import_cmd)
 
         conn.close()
@@ -62,8 +65,8 @@ def sync_db_params(tables: list[str]) -> str:
         logger.error(f"Critical error in sync_db_params: {e}")
         return f"Sync failed: {str(e)}"
 
-
 if __name__ == "__main__":
+    # Tablas maestras del Motor Tributario
     tables_to_sync = [
         "indices_inflacion", "tasas_historicas", "unidad_valor_tributario",
         "parametros_beneficios", "parametros_pricing", "parametros_renta",

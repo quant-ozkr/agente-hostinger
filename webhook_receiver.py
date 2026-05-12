@@ -16,7 +16,7 @@ app = FastAPI()
 # Direcciones de la Trinidad Agéntica en el VPS
 BRAINS = {
     "backend_asesor": "http://127.0.0.1:8001/health",
-    "mkt_agent": "http://127.0.0.1:8002/health",
+    "mkt_agent": "http://127.0.0.1:8000/health",
     "orchestrator": "http://127.0.0.1:8010/health"
 }
 

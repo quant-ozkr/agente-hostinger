@@ -1,22 +1,16 @@
 """
-Skill: Pull DB Params (VPS -> Local)
+Skill: Pull DB Params (VPS -> Local) v2.0
 Exports parametric tables from VPS database, downloads via SFTP, and imports into local Docker PostgreSQL.
-Requires VPS SSH credentials configured in .env (HOSTINGER_IP, HOSTINGER_USER, SSH_KEY_PATH).
-
-Prerequisitos:
-  - Antes de ejecutar, hacer pg_dump de respaldo en el VPS:
-      ssh tesis@<VPS_IP> "pg_dump -U rootAdminLiq liqExpert | gzip > /backups/postgres/pre_sync_$(date +%Y%m%d).sql.gz"
-  - Tener el stack local levantado (docker-compose.platform-local.yml up -d)
-  - Tener configuradas las variables SSH en .env del inf-expert-agent
+Architecture v2.0: Targets cfo-expert-agent-postgres-1 and liqExpert database.
 """
 import os
 import subprocess
 from core.ssh_utils import get_ssh_connection_from_env, logger
 
-LOCAL_POSTGRES_CONTAINER = "liqexpert_postgres"
-VPS_POSTGRES_CONTAINER = "cfo_postgres"
-LOCAL_DB_USER = "app"
-LOCAL_DB_NAME = "liqexpert_dev"
+LOCAL_POSTGRES_CONTAINER = "cfo-expert-agent-postgres-1"
+VPS_POSTGRES_CONTAINER = "cfo-expert-agent-postgres-1"
+LOCAL_DB_USER = "rootAdminLiq"
+LOCAL_DB_NAME = "liqExpert"
 
 # Lista completa de tablas parametricas
 ALL_PARAM_TABLES = [
@@ -28,10 +22,8 @@ ALL_PARAM_TABLES = [
     "parametros_renta",
     "reglas_interes",
     "tarifas_renta",
-    "topes_deducciones",
-    "codigos_direccion_seccional",
+    "topes_deducciones"
 ]
-
 
 def pull_db_params(tables: list[str] = None) -> str:
     if not tables:
@@ -69,15 +61,6 @@ def pull_db_params(tables: list[str] = None) -> str:
         with open(local_sql, "w", encoding="utf-8") as f:
             f.write(out)
 
-        # 3. Subir el SQL al VPS (para que esté accesible)
-        sftp = conn.client.open_sftp()
-        sftp.put(local_sql, remote_sql)
-        sftp.close()
-
-        logger.info(f"Archivo SQL subido a VPS: {remote_sql}")
-
-        # 4. Descargar el SQL desde el VPS a local via SFTP (ya lo tenemos en local_sql)
-
         # 5. Cerrar conexion VPS
         conn.close()
 
@@ -97,7 +80,7 @@ def pull_db_params(tables: list[str] = None) -> str:
             text=True,
         )
         if proc.returncode != 0:
-            logger.warning(f"Truncate warning (puede que tablas no existan aun): {proc.stderr}")
+            logger.warning(f"Truncate warning: {proc.stderr}")
 
         # Importar datos
         with open(local_sql, "r", encoding="utf-8") as f:
@@ -132,7 +115,6 @@ def pull_db_params(tables: list[str] = None) -> str:
     except Exception as e:
         logger.error(f"Error critico en pull_db_params: {e}")
         return f"Pull fallo: {str(e)}"
-
 
 if __name__ == "__main__":
     print(pull_db_params())

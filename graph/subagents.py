@@ -1,7 +1,13 @@
 import logging
 from typing import TypedDict, Annotated, Sequence, List
 import operator
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, AIMessage
+
+# Importar habilidades (skills)
+from skills.cicd.health_check import health_check
+from skills.cicd.build_and_deploy import build_and_deploy
+from skills.monitoring.notify_orchestrator import notify_orchestrator
+from skills.maintenance.sync_db_params import sync_db_params
 
 logger = logging.getLogger("subagents")
 
@@ -13,39 +19,53 @@ class AgentState(TypedDict):
     requires_human: bool
 
 def monitor_agent(state: AgentState) -> AgentState:
-    """Sub-agente que lee las métricas del VPS y busca anomalías."""
-    # Aquí iría la lógica LLM para interpretar las métricas. 
-    # Por ahora lo simulamos:
-    logger.info("Monitor Agent evaluando métricas...")
+    """Sub-agente que usa la skill de health_check para evaluar el sistema."""
+    logger.info("Monitor Agent iniciando verificación de salud v2.0...")
+    
+    # Ejecutar la skill determinista
+    health_results = health_check()
     
     issues = []
-    # Simulación de evaluación
-    if "100%" in state.get("vps_metrics", ""):
-        issues.append("Uso de CPU al 100%")
-    if "corruption" in state.get("vps_metrics", "").lower():
-        issues.append("Database corruption detected")
+    if "❌" in health_results:
+        issues.append(f"Fallo de salud detectado: {health_results}")
         
-    return {"issues_found": issues}
+    # El LLM puede ver el resultado en los mensajes
+    return {
+        "messages": [AIMessage(content=f"Resultado del Health Check:\n{health_results}")],
+        "issues_found": issues
+    }
 
 def healer_agent(state: AgentState) -> AgentState:
-    """Sub-agente que toma decisiones correctivas en base a los issues."""
+    """Sub-agente que toma acciones correctivas."""
     logger.info("Healer Agent analizando issues...")
     actions = []
     requires_human = state.get("requires_human", False)
     
     for issue in state.get("issues_found", []):
-        if "CPU" in issue:
-            actions.append("Reiniciando servicios no críticos para liberar CPU")
-        elif "Database" in issue:
-            actions.append("Se requiere intervención humana para corrupción de base de datos")
+        if "UNREACHABLE" in issue or "FAILED" in issue:
+            # Intentar autocuración vía redeploy (build_and_deploy)
+            msg = "Intentando autocuración reiniciando servicios..."
+            notify_orchestrator(f"🛠 {msg}")
+            deploy_result = build_and_deploy()
+            actions.append(f"Redeploy ejecutado: {deploy_result[:100]}")
+        
+        if "Critical" in issue:
             requires_human = True
             
     return {"actions_taken": actions, "requires_human": requires_human}
 
 def auditor_agent(state: AgentState) -> AgentState:
-    """Sub-agente que verifica la seguridad y logs de auditoría."""
-    logger.info("Auditor Agent revisando logs de seguridad...")
-    actions = []
-    if not state.get("issues_found"):
-        actions.append("No se detectaron brechas de seguridad")
-    return {"actions_taken": actions}
+    """Sub-agente de auditoría y notificaciones finales."""
+    logger.info("Auditor Agent finalizando ciclo...")
+    
+    summary = "Ciclo de mantenimiento completado."
+    if state.get("actions_taken"):
+        summary += f" Acciones: {', '.join(state['actions_taken'])}"
+    
+    # Notificar al Orchestrator el fin del ciclo si hubo cambios
+    if state.get("issues_found"):
+        notify_orchestrator(f"📋 Resumen de Infraestructura: {summary}")
+        
+    return {
+        "messages": [AIMessage(content=summary)]
+    }

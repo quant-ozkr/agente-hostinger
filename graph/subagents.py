@@ -7,7 +7,6 @@ from langchain_core.messages import BaseMessage, AIMessage
 from skills.cicd.health_check import health_check
 from skills.cicd.build_and_deploy import build_and_deploy
 from skills.monitoring.notify_orchestrator import notify_orchestrator
-from skills.maintenance.sync_db_params import sync_db_params
 from skills.maintenance.cleanup_vps import cleanup_vps
 
 logger = logging.getLogger("subagents")
@@ -52,7 +51,7 @@ def healer_agent(state: AgentState) -> AgentState:
         elif "DISK_WARNING" in issue:
             notify_orchestrator("⚠️ Espacio en disco bajo. Ejecutando limpieza de mantenimiento...")
             res = cleanup_vps(deep=False)
-            actions.append(f"Limpieza de mantenimiento ejecutada.")
+            actions.append("Limpieza de mantenimiento ejecutada.")
 
         # 2. Gestión de servicios caídos
         if "UNREACHABLE" in issue or "FAILED" in issue:

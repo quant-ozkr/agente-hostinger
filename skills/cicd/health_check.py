@@ -6,7 +6,6 @@ import subprocess
 import requests
 import logging
 import os
-import re
 from core.ssh_utils import run_remote_command
 
 logger = logging.getLogger("health-check")
@@ -22,7 +21,8 @@ def get_disk_usage() -> int:
             status, out, err = run_remote_command(cmd)
             out = out.strip()
         return int(out) if out.isdigit() else 0
-    except:
+    except Exception as e:
+        logger.error(f"Error getting disk usage: {e}")
         return 0
 
 def health_check() -> str:
@@ -30,7 +30,7 @@ def health_check() -> str:
     
     # 1. Disk Space Check
     usage = get_disk_usage()
-    results.append(f"--- System Metrics ---")
+    results.append("--- System Metrics ---")
     if usage > 90:
         results.append(f"❌ DISK_CRITICAL: Usage is at {usage}%! Immediate cleanup required.")
     elif usage > 70:
@@ -67,7 +67,7 @@ def health_check() -> str:
                 results.append(f"✅ {name}: OK ({resp.json().get('status', 'no-status')})")
             else:
                 results.append(f"❌ {name}: FAILED (Status {resp.status_code})")
-        except Exception as e:
+        except Exception:
             results.append(f"❌ {name}: UNREACHABLE")
             
     return "\n".join(results)
